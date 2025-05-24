@@ -2,6 +2,8 @@
 
 import { useState, useRef } from 'react';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 interface UploadResponse {
   filename: string;
   lines: string[];
@@ -89,7 +91,7 @@ export default function Home() {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch('http://localhost:8000/upload', {
+      const response = await fetch(`${API_URL}/upload`, {
         method: 'POST',
         body: formData,
       });
@@ -118,7 +120,7 @@ export default function Home() {
     if (!uploadedText) return;
 
     try {
-      const response = await fetch('http://localhost:8000/tokens', {
+      const response = await fetch(`${API_URL}/tokens`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -313,7 +315,7 @@ export default function Home() {
     setExporting(true);
     setExportSuccess(null);
     try {
-      const response = await fetch('http://localhost:8000/export', {
+      const response = await fetch(`${API_URL}/export`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -346,7 +348,7 @@ export default function Home() {
     setReplacing(true);
     setReplaceCount(null);
     try {
-      const response = await fetch('http://localhost:8000/replace', {
+      const response = await fetch(`${API_URL}/replace`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
