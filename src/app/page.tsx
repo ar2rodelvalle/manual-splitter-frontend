@@ -322,8 +322,7 @@ export default function Home() {
         },
         body: JSON.stringify({
           sections,
-          lines: uploadedText.lines,
-          outputPath: exportPath
+          lines: uploadedText.lines
         }),
       });
 
@@ -332,8 +331,22 @@ export default function Home() {
         throw new Error(errorData.error || 'Export failed');
       }
 
-      const data = await response.json();
-      setExportSuccess(`Files exported successfully to ${data.outputPath}`);
+      // Get the blob from the response
+      const blob = await response.blob();
+      
+      // Create a download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'sections.zip';
+      document.body.appendChild(a);
+      a.click();
+      
+      // Clean up
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      setExportSuccess('Files downloaded successfully');
     } catch (error) {
       console.error('Export error:', error);
       alert(error instanceof Error ? error.message : 'Failed to export sections');
@@ -552,7 +565,7 @@ export default function Home() {
                     >
                       Clear Section
                     </button>
-                  </div>
+        </div>
                   {midpoint !== null && (
                     <button
                       onClick={handleJumpToMidpoint}
@@ -606,29 +619,12 @@ export default function Home() {
             {uploadedText && sections.length > 0 && (
               <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
                 <h3 className="text-lg font-semibold text-blue-300 mb-2">Export Sections</h3>
-                <div className="flex items-center gap-2 mb-2">
-                  <input
-                    type="text"
-                    value={exportPath}
-                    onChange={(e) => setExportPath(e.target.value)}
-                    placeholder="Enter output path"
-                    className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm"
-                  />
-                  <button
-                    onClick={() => setExportPath('/Users/arturodelvalle/Documents/websites/bookstore/manual-splitter/output')}
-                    className="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm"
-                    title="Reset to default path"
-                  >
-                    Reset
-                  </button>
-                </div>
-                <div className="text-xs text-gray-400 mb-2">Enter the full path where you want to save the files</div>
                 <button
                   onClick={handleExport}
                   disabled={exporting}
                   className={`w-full px-4 py-2 rounded ${exporting ? 'bg-gray-600 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'} text-white font-medium transition-colors`}
                 >
-                  {exporting ? 'Exporting...' : 'Export Sections'}
+                  {exporting ? 'Exporting...' : 'Download Sections'}
                 </button>
                 {exportSuccess && (
                   <div className="mt-2 p-2 bg-green-900/50 border border-green-700 rounded text-sm">{exportSuccess}</div>
