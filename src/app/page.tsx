@@ -52,20 +52,22 @@ export default function Home() {
   const [replaceCount, setReplaceCount] = useState<number | null>(null);
 
   useEffect(() => {
-    try {
-      // Load saved sections
-      const savedSections = localStorage.getItem(STORAGE_KEY_SECTIONS);
-      if (savedSections) {
-        setSections(JSON.parse(savedSections));
-      }
+    if (typeof window !== 'undefined') {  // Check if we're in the browser
+      try {
+        // Load saved sections
+        const savedSections = localStorage.getItem(STORAGE_KEY_SECTIONS);
+        if (savedSections) {
+          setSections(JSON.parse(savedSections));
+        }
 
-      // Load saved text
-      const savedText = localStorage.getItem(STORAGE_KEY_TEXT);
-      if (savedText) {
-        setUploadedText(JSON.parse(savedText));
+        // Load saved text
+        const savedText = localStorage.getItem(STORAGE_KEY_TEXT);
+        if (savedText) {
+          setUploadedText(JSON.parse(savedText));
+        }
+      } catch (error) {
+        console.error('Error loading saved data:', error);
       }
-    } catch (error) {
-      console.error('Error loading saved data:', error);
     }
   }, []);
 
@@ -92,8 +94,10 @@ export default function Home() {
     setTokenCount(null);
     
     // Clear localStorage
-    localStorage.removeItem(STORAGE_KEY_SECTIONS);
-    localStorage.removeItem(STORAGE_KEY_TEXT);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(STORAGE_KEY_SECTIONS);
+      localStorage.removeItem(STORAGE_KEY_TEXT);
+    }
     
     // Reset the file input
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
@@ -225,10 +229,12 @@ export default function Home() {
       setSections(newSections);
       
       // Save to localStorage
-      try {
-        localStorage.setItem(STORAGE_KEY_SECTIONS, JSON.stringify(newSections));
-      } catch (error) {
-        console.error('Error saving sections:', error);
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(STORAGE_KEY_SECTIONS, JSON.stringify(newSections));
+        } catch (error) {
+          console.error('Error saving sections:', error);
+        }
       }
 
       setCurrentSection(null);
@@ -306,10 +312,12 @@ export default function Home() {
     setSections(newSections);
     
     // Save to localStorage
-    try {
-      localStorage.setItem(STORAGE_KEY_SECTIONS, JSON.stringify(newSections));
-    } catch (error) {
-      console.error('Error saving sections:', error);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(STORAGE_KEY_SECTIONS, JSON.stringify(newSections));
+      } catch (error) {
+        console.error('Error saving sections:', error);
+      }
     }
   };
 
