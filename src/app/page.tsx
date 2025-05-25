@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const STORAGE_KEY_SECTIONS = 'manual-splitter-sections';
+const STORAGE_KEY_TEXT = 'manual-splitter-text';
 
 interface UploadResponse {
   filename: string;
@@ -49,6 +51,24 @@ export default function Home() {
   const [replacing, setReplacing] = useState(false);
   const [replaceCount, setReplaceCount] = useState<number | null>(null);
 
+  useEffect(() => {
+    try {
+      // Load saved sections
+      const savedSections = localStorage.getItem(STORAGE_KEY_SECTIONS);
+      if (savedSections) {
+        setSections(JSON.parse(savedSections));
+      }
+
+      // Load saved text
+      const savedText = localStorage.getItem(STORAGE_KEY_TEXT);
+      if (savedText) {
+        setUploadedText(JSON.parse(savedText));
+      }
+    } catch (error) {
+      console.error('Error loading saved data:', error);
+    }
+  }, []);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     setError(null);
@@ -70,6 +90,11 @@ export default function Home() {
     setSections([]);
     setError(null);
     setTokenCount(null);
+    
+    // Clear localStorage
+    localStorage.removeItem(STORAGE_KEY_SECTIONS);
+    localStorage.removeItem(STORAGE_KEY_TEXT);
+    
     // Reset the file input
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     if (fileInput) {
@@ -103,10 +128,21 @@ export default function Home() {
       const data = await response.json();
       console.log('Upload successful:', data);
       setUploadedText(data);
+      
+      // Save to localStorage
+      try {
+        localStorage.setItem(STORAGE_KEY_TEXT, JSON.stringify(data));
+      } catch (error) {
+        console.error('Error saving text:', error);
+      }
+
       // Reset sections when new file is uploaded
       setCurrentSection(null);
       setSections([]);
       setTokenCount(null);
+      
+      // Clear sections from localStorage when new file is uploaded
+      localStorage.removeItem(STORAGE_KEY_SECTIONS);
     } catch (err) {
       console.error('Upload error:', err);
       setError(err instanceof Error ? err.message : 'Upload failed');
@@ -184,16 +220,23 @@ export default function Home() {
 
   const handleSaveSection = () => {
     if (currentSection && currentSection.end !== null) {
-      // Use manual title if provided, otherwise use the auto-detected title
       const title = manualTitle.trim() || currentSection.title;
-      setSections([...sections, { ...currentSection, title, shouldSummarize }]);
+      const newSections = [...sections, { ...currentSection, title, shouldSummarize }];
+      setSections(newSections);
+      
+      // Save to localStorage
+      try {
+        localStorage.setItem(STORAGE_KEY_SECTIONS, JSON.stringify(newSections));
+      } catch (error) {
+        console.error('Error saving sections:', error);
+      }
+
       setCurrentSection(null);
       setTokenCount(null);
       setManualTitle('');
-      setMidpoint(null); // Clear the midpoint when saving a section
+      setMidpoint(null);
       setMarkingStatus('Click a line to start marking a section');
       
-      // Scroll to the latest section after a short delay to ensure the DOM has updated
       setTimeout(() => {
         if (savedSectionsRef.current) {
           savedSectionsRef.current.scrollTop = savedSectionsRef.current.scrollHeight;
@@ -259,9 +302,15 @@ export default function Home() {
   };
 
   const handleDeleteSection = (index: number) => {
-    // Remove the section at the specified index
     const newSections = sections.filter((_, i) => i !== index);
     setSections(newSections);
+    
+    // Save to localStorage
+    try {
+      localStorage.setItem(STORAGE_KEY_SECTIONS, JSON.stringify(newSections));
+    } catch (error) {
+      console.error('Error saving sections:', error);
+    }
   };
 
   const handleJumpToRow = () => {
@@ -546,123 +595,4 @@ export default function Home() {
                       onChange={(e) => setManualTitle(e.target.value)}
                       placeholder="Enter section title"
                       disabled={!currentSection}
-                      className={`flex-1 px-3 py-1 rounded bg-gray-700 text-gray-200 border border-gray-600 focus:border-blue-500 focus:outline-none ${!currentSection ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    />
-                  </div>
-                  <div className="flex gap-4">
-                    <button
-                      onClick={handleSaveSection}
-                      disabled={!currentSection || currentSection.end === null}
-                      className={`flex-1 py-2 px-4 rounded-lg font-semibold ${!currentSection || currentSection.end === null ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-700'}`}
-                    >
-                      Save Section
-                    </button>
-                    <button
-                      onClick={handleClearSection}
-                      disabled={!currentSection}
-                      className={`flex-1 py-2 px-4 rounded-lg font-semibold ${!currentSection ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-700'}`}
-                    >
-                      Clear Section
-                    </button>
-                  </div>
-                  {midpoint !== null && (
-                    <button
-                      onClick={handleJumpToMidpoint}
-                      className="w-full py-2 px-4 rounded-lg font-semibold bg-yellow-600 text-white hover:bg-yellow-700"
-                      title="Jump to suggested midpoint for splitting this section"
-                    >
-                      Jump to Midpoint
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Replace Text Controls */}
-            {uploadedText && (
-              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-                <h3 className="text-lg font-semibold text-blue-300 mb-2">Replace Text</h3>
-                <div className="flex flex-col gap-2 mb-2">
-                  <div className="flex gap-2 w-full">
-                    <input
-                      type="text"
-                      value={searchText}
-                      onChange={(e) => setSearchText(e.target.value)}
-                      placeholder="Text to replace"
-                      className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm min-w-0"
-                    />
-                    <span className="text-gray-400 self-center">→</span>
-                    <input
-                      type="text"
-                      value={replaceText}
-                      onChange={(e) => setReplaceText(e.target.value)}
-                      placeholder="Replace with"
-                      className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm min-w-0"
-                    />
-                  </div>
-                </div>
-                <button
-                  onClick={handleReplace}
-                  disabled={replacing || !searchText}
-                  className={`w-full px-4 py-2 rounded ${replacing || !searchText ? 'bg-gray-600 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'} text-white font-medium transition-colors`}
-                >
-                  {replacing ? 'Replacing...' : 'Replace'}
-                </button>
-                {replaceCount !== null && (
-                  <div className="mt-2 text-sm text-gray-400">Replaced {replaceCount} occurrences</div>
-                )}
-              </div>
-            )}
-
-            {/* Export Controls */}
-            {uploadedText && sections.length > 0 && (
-              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-                <h3 className="text-lg font-semibold text-blue-300 mb-2">Export Sections</h3>
-                <button
-                  onClick={handleExport}
-                  disabled={exporting}
-                  className={`w-full px-4 py-2 rounded ${exporting ? 'bg-gray-600 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'} text-white font-medium transition-colors`}
-                >
-                  {exporting ? 'Exporting...' : 'Download Sections'}
-                </button>
-                {exportSuccess && (
-                  <div className="mt-2 p-2 bg-green-900/50 border border-green-700 rounded text-sm">{exportSuccess}</div>
-                )}
-              </div>
-            )}
-
-            {/* Saved Sections */}
-            {uploadedText && (
-              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 sticky top-8">
-                <h3 className="text-lg font-semibold text-blue-300 mb-4">Saved Sections</h3>
-                {sections.length === 0 ? (
-                  <div className="text-sm text-gray-400 italic">No sections saved yet</div>
-                ) : (
-                  <div ref={savedSectionsRef} className="space-y-3 max-h-[300px] overflow-y-auto">
-                    {sections.map((section, index) => (
-                      <div key={index} className="bg-gray-700/50 p-3 rounded-lg relative group">
-                        <button
-                          onClick={() => handleDeleteSection(index)}
-                          className="absolute top-2 right-2 p-1 rounded-full bg-gray-600/50 hover:bg-red-600/50 text-gray-400 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
-                          title="Remove section"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                          </svg>
-                        </button>
-                        <div className="text-sm text-gray-300 font-medium mb-1">{section.title ? section.title : `Section ${index + 1}`}</div>
-                        <div className="text-sm text-gray-400">Lines {section.start + 1} to {section.end !== null ? section.end + 1 : '?'}</div>
-                        <div className="text-sm text-gray-300 mt-1">Tokens: {section.tokenCount}</div>
-                        <div className="text-sm text-gray-400 mt-1">{section.shouldSummarize ? 'Will be summarized' : 'Will not be summarized'}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-    </div>
-    </main>
-  );
-}
+                      className={`
