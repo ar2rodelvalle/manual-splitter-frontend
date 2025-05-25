@@ -43,6 +43,7 @@ export default function Home() {
   const [shouldSummarize, setShouldSummarize] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [exportSuccess, setExportSuccess] = useState<string | null>(null);
+  const [exportPath, setExportPath] = useState('/Users/arturodelvalle/Documents/websites/bookstore/manual-splitter/output');
   const [midpoint, setMidpoint] = useState<number | null>(null);
   const [searchText, setSearchText] = useState('');
   const [replaceText, setReplaceText] = useState('');
